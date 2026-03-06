@@ -112,8 +112,17 @@
                 </button>
                 <h2 class="text-2xl font-bold">সেটিংস</h2>
             </div>
-            <div class="space-y-6">
-                <div>
+            <div class="space-y-8">
+                <div class="bg-gray-50 p-4 rounded-2xl border">
+                    <label class="block text-gray-600 font-bold mb-3 text-sm uppercase">প্রোফাইল ছবি পরিবর্তন</label>
+                    <div class="flex items-center gap-4">
+                        <img id="settings-pic-preview" src="icon-192.png" class="w-16 h-16 rounded-full object-cover border-2 border-blue-200">
+                        <input type="file" id="pic-upload" accept="image/*" class="hidden" onchange="previewAndSavePic(this)">
+                        <button onclick="document.getElementById('pic-upload').click()" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm">ছবি পছন্দ করুন</button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-2xl border">
                     <label class="block text-gray-600 font-bold mb-2 text-sm uppercase">পিন পরিবর্তন</label>
                     <input type="password" id="new-pin" placeholder="নতুন ৪ সংখ্যার পিন" class="w-full p-4 border rounded-xl mb-3 outline-none focus:ring-2 focus:ring-blue-400">
                     <button onclick="saveNewPin()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">পিন আপডেট করুন</button>
@@ -235,43 +244,33 @@
         function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+        // Updated saveCustomer with duplicate phone check
         function saveCustomer() {
             const name = document.getElementById('cust-name').value.trim();
             const phone = document.getElementById('cust-phone').value.trim();
-            
-            if(!name || !phone) {
-                alert("নাম এবং মোবাইল নম্বর দিন!");
-                return;
-            }
+            if(!name || !phone) { alert("নাম ও নম্বর উভয়ই দিন"); return; }
 
             const tx = db.transaction("customers", "readwrite");
             const store = tx.objectStore("customers");
 
-            // চেক করা হচ্ছে এই নম্বরে আগে কেউ আছে কিনা
-            const checkRequest = store.getAll();
-            checkRequest.onsuccess = (e) => {
+            // Check if phone already exists
+            const request = store.getAll();
+            request.onsuccess = (e) => {
                 const customers = e.target.result;
-                const isExist = customers.some(c => c.phone === phone);
-
-                if (isExist) {
-                    alert("এই মোবাইল নম্বরটি দিয়ে অলরেডি একজন কাস্টমার যোগ করা আছে!");
-                } else {
-                    // ডুপ্লিকেট না থাকলে যোগ হবে
-                    const addRequest = store.add({ 
-                        name, 
-                        phone, 
-                        balance: 0, 
-                        transactions: [], 
-                        date: new Date().toLocaleDateString('bn-BD') 
-                    });
-                    
-                    addRequest.onsuccess = () => {
-                        document.getElementById('cust-name').value = '';
-                        document.getElementById('cust-phone').value = '';
-                        hideModal('add-customer-modal'); 
-                        renderCustomers();
-                    };
+                const exists = customers.find(c => c.phone === phone);
+                
+                if(exists) {
+                    alert("এই নম্বরটি ইতিমধ্যে " + exists.name + " নামে সেভ করা আছে!");
+                    return;
                 }
+
+                store.add({ name, phone, balance: 0, transactions: [], date: new Date().toLocaleDateString('bn-BD') });
+                tx.oncomplete = () => { 
+                    document.getElementById('cust-name').value = '';
+                    document.getElementById('cust-phone').value = '';
+                    hideModal('add-customer-modal'); 
+                    renderCustomers(); 
+                };
             };
         }
 
@@ -370,7 +369,7 @@
                     <div class="flex items-center gap-2">
                         <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">৳${t.amount}</p>
                         <button onclick="askPinForDelete('transaction', ${t.id})" class="text-red-300">
-                           <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            <svg class="icon w-4 h-4" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                         </button>
                     </div>
                 </div>`).join('');
@@ -427,10 +426,31 @@
         function saveNewPin() { 
             const p = document.getElementById('new-pin').value;
             if(p.length >= 4) { localStorage.setItem('appPin', p); alert("পিন আপডেট হয়েছে"); hideModal('settings-modal'); }
+            else { alert("কমপক্ষে ৪ সংখ্যার পিন দিন"); }
         }
+
+        // New function to handle profile pic change
+        function previewAndSavePic(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Pic = e.target.result;
+                    // Update UI
+                    document.getElementById('profile-pic-display').src = base64Pic;
+                    document.getElementById('settings-pic-preview').src = base64Pic;
+                    // Save to local storage
+                    localStorage.setItem('userPic', base64Pic);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function loadSettings() {
             const p = localStorage.getItem('userPic');
-            if(p) document.getElementById('profile-pic-display').src = p;
+            if(p) {
+                document.getElementById('profile-pic-display').src = p;
+                document.getElementById('settings-pic-preview').src = p;
+            }
         }
 
         if ('serviceWorker' in navigator) {
