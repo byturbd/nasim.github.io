@@ -2,13 +2,11 @@
 <html lang="bn">
 <head>
     <link rel="icon" type="image/png" href="icon-512.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<link rel="manifest" href="manifest.json">
-
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#1d4ed8">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="theme-color" content="#1d4ed8">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nasim Store - Digital Khata</title>
@@ -33,11 +31,10 @@
     </div>
 
     <div id="app-content" class="hidden">
-        
         <header class="sticky-header bg-blue-700 text-white p-4 shadow-lg flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="relative w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-200">
-                    <img id="profile-pic-display" src="/icon-192.png" class="w-full h-full object-cover">
+                    <img id="profile-pic-display" src="icon-192.png" class="w-full h-full object-cover">
                 </div>
                 <div>
                     <p class="text-[10px] text-blue-200 uppercase">স্বাগতম</p>
@@ -173,9 +170,8 @@
                     <span id="sell-total" class="text-xl font-black text-blue-700">৳ ০</span>
                 </div>
                 <input type="number" id="sell-paid" placeholder="আজকের জমা (টাকা)" class="w-full p-3 border rounded-xl outline-none">
-                
                 <div class="w-full">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">টাকা দেওয়ার মাধ্যম</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">টাকা দেওয়ার মাধ্যম</label>
                     <select id="sell-method" class="w-full p-3 border rounded-xl outline-none bg-white">
                         <option value="নগদ">নগদ (Cash)</option>
                         <option value="বিকাশ">বিকাশ (Bkash)</option>
@@ -195,7 +191,6 @@
             <h2 class="text-xl font-bold mb-4 text-blue-700">বকেয়া জমা নিন</h2>
             <div class="space-y-3">
                 <input type="number" id="payment-amount" placeholder="জমার পরিমাণ (৳)" class="w-full p-4 border rounded-xl outline-none text-2xl text-center font-bold text-blue-600">
-                
                 <div class="w-full">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">জমার মাধ্যম</label>
                     <select id="payment-method" class="w-full p-3 border rounded-xl outline-none bg-white">
@@ -231,27 +226,6 @@
         };
 
         let currentCustomerId = null;
-
-        function shareToWhatsApp() {
-            const tx = db.transaction("customers", "readonly");
-            tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
-                const cust = e.target.result;
-                const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
-                const amount = Math.abs(cust.balance);
-                
-                const message = `*Nasim Store - মেমো*\n` +
-                                `--------------------------\n` +
-                                `সম্মানিত ${cust.name},\n` +
-                                `আপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\n` +
-                                `অবস্থা: *${status}*\n` +
-                                `পরিমাণ: *৳ ${amount}*\n\n` +
-                                `ধন্যবাদ আমাদের সাথে থাকার জন্য।`;
-
-                const encodedMsg = encodeURIComponent(message);
-                const whatsappUrl = `https://wa.me/88${cust.phone}?text=${encodedMsg}`;
-                window.open(whatsappUrl, '_blank');
-            };
-        }
 
         function checkLogin() {
             const input = document.getElementById('pin-input').value;
@@ -413,33 +387,39 @@
             const store = tx.objectStore("customers");
             store.get(currentCustomerId).onsuccess = (e) => {
                 const cust = e.target.result;
-                let amount = 0, details = "";
+                let netChange = 0, details = "", displayAmount = 0;
                 
                 if(type === 'sell') {
                     const kg = parseFloat(document.getElementById('sell-kg').value) || 0;
                     const rate = parseFloat(document.getElementById('sell-rate').value) || 0;
                     const paid = parseFloat(document.getElementById('sell-paid').value) || 0;
-                    const method = document.getElementById('sell-method').value; // নতুন
+                    const method = document.getElementById('sell-method').value;
                     
-                    amount = (kg * rate) - paid;
+                    const totalBill = kg * rate;
+                    netChange = totalBill - paid; // এটি ব্যালেন্সে যোগ হবে
+                    displayAmount = totalBill; // ইতিহাসে দেখানোর জন্য
                     details = `${kg} কেজি (দর ${rate}) - জমা ৳${paid} (${method})`;
                     hideModal('sell-modal');
-                    // Reset fields
                     document.getElementById('sell-kg').value = '';
                     document.getElementById('sell-rate').value = '';
                     document.getElementById('sell-paid').value = '';
                 } else {
                     const payVal = parseFloat(document.getElementById('payment-amount').value) || 0;
-                    const method = document.getElementById('payment-method').value; // নতুন
-                    amount = -payVal;
+                    const method = document.getElementById('payment-method').value;
+                    netChange = -payVal; // বকেয়া কমবে
+                    displayAmount = payVal;
                     details = `বকেয়া জমা ৳${payVal} (${method})`;
                     hideModal('payment-modal');
                     document.getElementById('payment-amount').value = '';
                 }
 
-                cust.balance += amount;
+                cust.balance += netChange;
                 cust.transactions.unshift({
-                    id: Date.now(), type, amount: Math.abs(amount), details,
+                    id: Date.now(), 
+                    type, 
+                    amount: displayAmount, 
+                    netImpact: netChange, // ডিলেট করার সময় কাজে লাগবে
+                    details,
                     date: new Date().toLocaleString('bn-BD', {hour12: true, dateStyle: 'medium', timeStyle: 'short'})
                 });
                 
@@ -455,26 +435,38 @@
                     <div><p class="font-bold text-sm text-gray-800">${t.details}</p><p class="text-[10px] text-gray-500">${t.date}</p></div>
                     <div class="flex items-center gap-3">
                         <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">${t.type === 'sell' ? '+' : '-'} ৳${t.amount}</p>
-                        <button onclick="deleteTransaction(${t.id})" class="text-gray-300"><i class="fas fa-times-circle"></i></button>
+                        <button onclick="deleteTransaction(${t.id})" class="text-red-300 active:text-red-600 p-2"><i class="fas fa-times-circle"></i></button>
                     </div>
                 </div>`).join('') || '<p class="text-center text-gray-400 py-5">লেনদেন নেই</p>';
         }
 
+        // লেনদেন ডিলেট করার আপডেট করা ফাংশন
         function deleteTransaction(tId) {
-            if(!confirm("লেনদেনটি ডিলিট করতে চান?")) return;
+            if(!confirm("লেনদেনটি ডিলিট করতে চান? এতে কাস্টমারের ব্যালেন্স পরিবর্তন হবে।")) return;
+            
             const tx = db.transaction("customers", "readwrite");
             const store = tx.objectStore("customers");
+            
             store.get(currentCustomerId).onsuccess = (e) => {
                 const cust = e.target.result;
                 const idx = cust.transactions.findIndex(t => t.id === tId);
-                const t = cust.transactions[idx];
-                if(t.type === 'sell') {
-                    // এটি একটু জটিল কারণ 'sell' এ balance calculation এ paid amount ছিল। 
-                    // সহজ করার জন্য সরাসরি ব্যালেন্স হিসেব পুনরায় করা যেতে পারে। 
-                    // আপাতত আগের লজিক অনুসারেই রাখা হলো:
+                
+                if (idx > -1) {
+                    const t = cust.transactions[idx];
+                    
+                    // ব্যালেন্স রিভার্স করা
+                    // যদি নেট ইমপ্যাক্ট না থাকে (পুরাতন ডেটা), তবে টাইপ দেখে হিসেব করবে
+                    let impact = t.netImpact !== undefined ? t.netImpact : (t.type === 'sell' ? t.amount : -t.amount);
+                    cust.balance -= impact;
+                    
+                    // ইতিহাস থেকে মুছে ফেলা
+                    cust.transactions.splice(idx, 1);
+                    
+                    store.put(cust).onsuccess = () => {
+                        openDetails(currentCustomerId);
+                        renderCustomers();
+                    };
                 }
-                // সাধারণ ডিলিট লজিক
-                location.reload(); // ব্যালেন্স ঠিক রাখতে রিলোড বা রি-ক্যালকুলেট দরকার
             };
         }
 
@@ -508,28 +500,36 @@
             const pic = localStorage.getItem('userPic');
             if(pic) document.getElementById('profile-pic-display').src = pic;
         }
-    </script>
-    <script>
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker Registered'))
-                .catch(err => console.log('Service Worker Failed', err));
-        });
-    }
-</script>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1d4ed8">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then((reg) => console.log('Service Worker Registered!', reg))
-        .catch((err) => console.log('Service Worker Registration Failed!', err));
-    });
-  }
-</script>
+        function shareToWhatsApp() {
+            const tx = db.transaction("customers", "readonly");
+            tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
+                const cust = e.target.result;
+                const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
+                const amount = Math.abs(cust.balance);
+                
+                const message = `*Nasim Store - মেমো*\n` +
+                                `--------------------------\n` +
+                                `সম্মানিত ${cust.name},\n` +
+                                `আপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\n` +
+                                `অবস্থা: *${status}*\n` +
+                                `পরিমাণ: *৳ ${amount}*\n\n` +
+                                `ধন্যবাদ আমাদের সাথে থাকার জন্য।`;
+
+                const encodedMsg = encodeURIComponent(message);
+                const whatsappUrl = `https://wa.me/88${cust.phone}?text=${encodedMsg}`;
+                window.open(whatsappUrl, '_blank');
+            };
+        }
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker Registered'))
+                    .catch(err => console.log('Service Worker Failed', err));
+            });
+        }
+    </script>
 </body>
 </html>
