@@ -1,0 +1,24 @@
+{
+  "name": "Nasim Store Digital Khata",
+  "short_name": "Nasim Store",
+  "description": "নাসিম স্টোর ডিজিটাল হিসাব খাতা ও পেমেন্ট ট্র্যাকার",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
