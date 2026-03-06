@@ -113,20 +113,6 @@
                 <h2 class="text-2xl font-bold">সেটিংস</h2>
             </div>
             <div class="space-y-6">
-                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                    <label class="block text-gray-600 font-bold mb-3 text-sm uppercase">ডেটা ব্যাকআপ ও রিস্টোর</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="exportData()" class="bg-green-600 text-white py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95">ব্যাকআপ ফাইল</button>
-                        <label class="bg-orange-500 text-white py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95 text-center cursor-pointer">
-                            রিস্টোর ফাইল
-                            <input type="file" id="restore-input" class="hidden" onchange="importData(event)">
-                        </label>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-gray-600 font-bold mb-2 text-sm uppercase">প্রোফাইল ছবি</label>
-                    <input type="file" id="profile-upload" onchange="updateProfilePic(event)" class="w-full p-2 border-2 border-dashed rounded-xl border-blue-200">
-                </div>
                 <div>
                     <label class="block text-gray-600 font-bold mb-2 text-sm uppercase">পিন পরিবর্তন</label>
                     <input type="password" id="new-pin" placeholder="নতুন ৪ সংখ্যার পিন" class="w-full p-4 border rounded-xl mb-3 outline-none focus:ring-2 focus:ring-blue-400">
@@ -154,11 +140,11 @@
     <div id="pin-confirm-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-[300]">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center">
             <h2 class="text-xl font-bold mb-2">নিরাপত্তা যাচাই</h2>
-            <p class="text-gray-500 text-sm mb-6">মুছে ফেলার জন্য পিন দিন</p>
+            <p class="text-gray-500 text-sm mb-6">পিন দিন</p>
             <input type="password" id="confirm-pin-input" placeholder="পিন কোড" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 text-center text-2xl tracking-widest outline-none focus:border-red-400">
             <div class="flex gap-2">
                 <button onclick="hideModal('pin-confirm-modal')" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">বাতিল</button>
-                <button id="confirm-delete-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg">নিশ্চিত করুন</button>
+                <button id="confirm-delete-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg">নিশ্চিত</button>
             </div>
         </div>
     </div>
@@ -180,13 +166,22 @@
             <h2 class="text-xl font-bold mb-4 text-green-700">মুরগি বিক্রি</h2>
             <div class="space-y-3">
                 <div class="flex gap-2">
-                    <input type="number" id="sell-kg" oninput="calcTotal()" placeholder="কেজি" class="w-1/2 p-3 border rounded-xl">
-                    <input type="number" id="sell-rate" oninput="calcTotal()" placeholder="রেট" class="w-1/2 p-3 border rounded-xl">
+                    <input type="number" id="sell-kg" oninput="calcTotal()" placeholder="কেজি" class="w-1/2 p-3 border rounded-xl outline-none focus:border-green-500">
+                    <input type="number" id="sell-rate" oninput="calcTotal()" placeholder="রেট" class="w-1/2 p-3 border rounded-xl outline-none focus:border-green-500">
                 </div>
                 <div class="bg-blue-50 p-3 rounded-xl flex justify-between items-center">
                     <span id="sell-total" class="text-xl font-black text-blue-700 w-full text-center">৳ ০</span>
                 </div>
-                <input type="number" id="sell-paid" placeholder="জমা টাকা" class="w-full p-3 border rounded-xl">
+                <input type="number" id="sell-paid" placeholder="জমা টাকা" class="w-full p-3 border rounded-xl outline-none focus:border-green-500">
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">টাকা পরিশোধের মাধ্যম</label>
+                    <select id="sell-method" class="w-full p-3 border rounded-xl outline-none bg-gray-50 font-semibold">
+                        <option value="নগদ">নগদ (Cash)</option>
+                        <option value="বিকাশ">বিকাশ (Bkash)</option>
+                        <option value="অনলাইন">অনলাইন/ব্যাংক</option>
+                    </select>
+                </div>
             </div>
             <div class="flex gap-2 mt-6">
                 <button onclick="hideModal('sell-modal')" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">বাতিল</button>
@@ -198,7 +193,15 @@
     <div id="payment-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-[120]">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
             <h2 class="text-xl font-bold mb-4 text-blue-700">বকেয়া জমা</h2>
-            <input type="number" id="payment-amount" placeholder="পরিমাণ (৳)" class="w-full p-4 border rounded-xl mb-4 text-center font-bold">
+            <input type="number" id="payment-amount" placeholder="পরিমাণ (৳)" class="w-full p-4 border rounded-xl mb-4 text-center font-bold text-2xl outline-none">
+            
+            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase">জমার মাধ্যম</label>
+            <select id="payment-method" class="w-full p-3 border rounded-xl mb-5 outline-none bg-gray-50 font-semibold">
+                <option value="নগদ">নগদ (Cash)</option>
+                <option value="বিকাশ">বিকাশ (Bkash)</option>
+                <option value="অনলাইন">অনলাইন/ব্যাংক</option>
+            </select>
+
             <div class="flex gap-2">
                 <button onclick="hideModal('payment-modal')" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">বাতিল</button>
                 <button onclick="recordTransaction('payment')" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">জমা করুন</button>
@@ -238,7 +241,12 @@
             if(!name || !phone) return;
             const tx = db.transaction("customers", "readwrite");
             tx.objectStore("customers").add({ name, phone, balance: 0, transactions: [], date: new Date().toLocaleDateString('bn-BD') });
-            tx.oncomplete = () => { hideModal('add-customer-modal'); renderCustomers(); };
+            tx.oncomplete = () => { 
+                document.getElementById('cust-name').value = '';
+                document.getElementById('cust-phone').value = '';
+                hideModal('add-customer-modal'); 
+                renderCustomers(); 
+            };
         }
 
         function renderCustomers() {
@@ -273,12 +281,14 @@
                 document.getElementById('view-cust-name').innerText = cust.name;
                 document.getElementById('view-cust-phone').innerText = cust.phone;
                 document.getElementById('view-cust-balance').innerText = "৳ " + Math.abs(cust.balance);
+                document.getElementById('view-cust-status-label').innerText = cust.balance >= 0 ? "বর্তমান বকেয়া" : "অগ্রিম জমা";
                 renderTransactions(cust.transactions);
                 document.getElementById('details-view').classList.remove('hidden');
             };
         }
 
         function hideDetails() { document.getElementById('details-view').classList.add('hidden'); }
+        
         function calcTotal() {
             const kg = document.getElementById('sell-kg').value || 0;
             const rate = document.getElementById('sell-rate').value || 0;
@@ -290,21 +300,40 @@
             const store = tx.objectStore("customers");
             store.get(currentCustomerId).onsuccess = (e) => {
                 const cust = e.target.result;
-                let net = 0, details = "", amount = 0;
+                let net = 0, details = "", amount = 0, method = "";
+                
                 if(type === 'sell') {
                     const kg = parseFloat(document.getElementById('sell-kg').value) || 0;
                     const rate = parseFloat(document.getElementById('sell-rate').value) || 0;
                     const paid = parseFloat(document.getElementById('sell-paid').value) || 0;
-                    amount = kg * rate; net = amount - paid;
-                    details = `${kg} কেজি (দর ${rate}) - জমা ৳${paid}`;
+                    method = document.getElementById('sell-method').value;
+                    amount = kg * rate; 
+                    net = amount - paid;
+                    details = `${kg} কেজি (দর ${rate}) - জমা ৳${paid} (${method})`;
                     hideModal('sell-modal');
+                    // Reset inputs
+                    document.getElementById('sell-kg').value = '';
+                    document.getElementById('sell-rate').value = '';
+                    document.getElementById('sell-paid').value = '';
                 } else {
                     amount = parseFloat(document.getElementById('payment-amount').value) || 0;
-                    net = -amount; details = `বকেয়া জমা ৳${amount}`;
+                    method = document.getElementById('payment-method').value;
+                    net = -amount; 
+                    details = `বকেয়া জমা ৳${amount} (${method})`;
                     hideModal('payment-modal');
+                    document.getElementById('payment-amount').value = '';
                 }
+                
                 cust.balance += net;
-                cust.transactions.unshift({ id: Date.now(), type, amount, netImpact: net, details, date: new Date().toLocaleString('bn-BD') });
+                cust.transactions.unshift({ 
+                    id: Date.now(), 
+                    type, 
+                    amount, 
+                    netImpact: net, 
+                    details, 
+                    date: new Date().toLocaleString('bn-BD') 
+                });
+                
                 store.put(cust).onsuccess = () => { openDetails(currentCustomerId); renderCustomers(); };
             };
         }
@@ -312,7 +341,7 @@
         function renderTransactions(list) {
             document.getElementById('transaction-list').innerHTML = list.map(t => `
                 <div class="bg-gray-50 p-3 rounded-xl border flex justify-between items-center">
-                    <div><p class="font-bold text-sm">${t.details}</p><p class="text-[10px] text-gray-400">${t.date}</p></div>
+                    <div><p class="font-bold text-sm text-gray-700">${t.details}</p><p class="text-[10px] text-gray-400 font-bold">${t.date}</p></div>
                     <div class="flex items-center gap-2">
                         <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">৳${t.amount}</p>
                         <button onclick="askPinForDelete('transaction', ${t.id})" class="text-red-300">
@@ -329,7 +358,8 @@
         }
 
         function validatePinAndExecute() {
-            if(document.getElementById('confirm-pin-input').value === (localStorage.getItem('appPin') || '1234')) {
+            const pinVal = document.getElementById('confirm-pin-input').value;
+            if(pinVal === (localStorage.getItem('appPin') || '1234')) {
                 if(deleteAction.type === 'transaction') {
                     const tx = db.transaction("customers", "readwrite");
                     const store = tx.objectStore("customers");
@@ -338,10 +368,20 @@
                         const t = cust.transactions.find(x => x.id === deleteAction.id);
                         cust.balance -= t.netImpact;
                         cust.transactions = cust.transactions.filter(x => x.id !== deleteAction.id);
-                        store.put(cust).onsuccess = () => { openDetails(currentCustomerId); renderCustomers(); hideModal('pin-confirm-modal'); };
+                        store.put(cust).onsuccess = () => { 
+                            openDetails(currentCustomerId); 
+                            renderCustomers(); 
+                            hideModal('pin-confirm-modal'); 
+                            document.getElementById('confirm-pin-input').value = '';
+                        };
                     };
                 } else {
-                    db.transaction("customers", "readwrite").objectStore("customers").delete(currentCustomerId).onsuccess = () => { hideDetails(); renderCustomers(); hideModal('pin-confirm-modal'); };
+                    db.transaction("customers", "readwrite").objectStore("customers").delete(currentCustomerId).onsuccess = () => { 
+                        hideDetails(); 
+                        renderCustomers(); 
+                        hideModal('pin-confirm-modal'); 
+                        document.getElementById('confirm-pin-input').value = '';
+                    };
                 }
             } else { alert("ভুল পিন!"); }
         }
@@ -363,17 +403,11 @@
             const p = document.getElementById('new-pin').value;
             if(p.length >= 4) { localStorage.setItem('appPin', p); alert("পিন আপডেট হয়েছে"); hideModal('settings-modal'); }
         }
-        function updateProfilePic(e) {
-            const r = new FileReader();
-            r.onload = () => { localStorage.setItem('userPic', r.result); document.getElementById('profile-pic-display').src = r.result; };
-            r.readAsDataURL(e.target.files[0]);
-        }
         function loadSettings() {
             const p = localStorage.getItem('userPic');
             if(p) document.getElementById('profile-pic-display').src = p;
         }
 
-        // Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
