@@ -17,6 +17,8 @@
         body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
         .sticky-header { position: sticky; top: 0; z-index: 50; }
         .hidden { display: none; }
+        .modal-animate { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -80,7 +82,7 @@
                 </div>
                 <div class="flex gap-4 items-center">
                     <button onclick="shareToWhatsApp()" class="text-green-400 text-xl"><i class="fab fa-whatsapp"></i></button>
-                    <button onclick="confirmDeleteCustomer()" class="text-red-300 text-lg"><i class="fas fa-trash-alt"></i></button>
+                    <button onclick="requestDelete('customer')" class="text-red-300 text-lg"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </div>
             
@@ -147,7 +149,7 @@
     </div>
 
     <div id="add-customer-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-[120]">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl modal-animate">
             <h2 class="text-xl font-bold mb-4 text-blue-700">নতুন কাস্টমার</h2>
             <input type="text" id="cust-name" placeholder="কাস্টমারের নাম" class="w-full p-4 border rounded-xl mb-3 outline-none">
             <input type="tel" id="cust-phone" placeholder="মোবাইল নাম্বার" class="w-full p-4 border rounded-xl mb-5 outline-none">
@@ -158,8 +160,23 @@
         </div>
     </div>
 
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-[300]">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl modal-animate text-center">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-shield-alt text-2xl"></i>
+            </div>
+            <h2 class="text-xl font-bold mb-2 text-gray-800">নিরাপত্তা যাচাই</h2>
+            <p class="text-sm text-gray-500 mb-6">তথ্যটি ডিলিট করতে আপনার সিকিউরিটি পিন দিন</p>
+            <input type="password" id="delete-pin-input" placeholder="পিন কোড" class="w-full p-4 border-2 border-red-50 box-border rounded-xl mb-4 text-center text-2xl tracking-widest outline-none focus:border-red-500">
+            <div class="flex gap-2">
+                <button onclick="hideModal('delete-confirm-modal')" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">বাতিল</button>
+                <button id="confirm-delete-btn" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg">নিশ্চিত করুন</button>
+            </div>
+        </div>
+    </div>
+
     <div id="sell-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-[120]">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl modal-animate">
             <h2 class="text-xl font-bold mb-4 text-green-700">মুরগি বিক্রি</h2>
             <div class="space-y-3">
                 <div class="flex gap-2">
@@ -171,7 +188,6 @@
                     <span id="sell-total" class="text-xl font-black text-blue-700">৳ ০</span>
                 </div>
                 <input type="number" id="sell-paid" placeholder="আজকের জমা (টাকা)" class="w-full p-3 border rounded-xl outline-none">
-                
                 <div class="w-full">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">টাকা দেওয়ার মাধ্যম</label>
                     <select id="sell-method" class="w-full p-3 border rounded-xl outline-none bg-white">
@@ -189,11 +205,10 @@
     </div>
 
     <div id="payment-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-[120]">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl modal-animate">
             <h2 class="text-xl font-bold mb-4 text-blue-700">বকেয়া জমা নিন</h2>
             <div class="space-y-3">
                 <input type="number" id="payment-amount" placeholder="জমার পরিমাণ (৳)" class="w-full p-4 border rounded-xl outline-none text-2xl text-center font-bold text-blue-600">
-                
                 <div class="w-full">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">জমার মাধ্যম</label>
                     <select id="payment-method" class="w-full p-3 border rounded-xl outline-none bg-white">
@@ -229,7 +244,9 @@
         };
 
         let currentCustomerId = null;
+        let deleteTarget = { type: null, id: null };
 
+        // Authentication Functions
         function checkLogin() {
             const input = document.getElementById('pin-input').value;
             const savedPin = localStorage.getItem('appPin') || '1234';
@@ -255,16 +272,11 @@
             }
         }
 
+        // Modal Controls
         function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        // Security Validation
-        function validateAction() {
-            const pass = prompt("নিরাপত্তার জন্য পিন কোড দিন:");
-            const savedPin = localStorage.getItem('appPin') || '1234';
-            return pass === savedPin;
-        }
-
+        // Core Features
         function saveCustomer() {
             const name = document.getElementById('cust-name').value.trim();
             const phone = document.getElementById('cust-phone').value.trim();
@@ -364,7 +376,7 @@
             const store = tx.objectStore("customers");
             store.get(currentCustomerId).onsuccess = (e) => {
                 const cust = e.target.result;
-                let amount = 0, details = "";
+                let netAmount = 0, details = "", displayAmount = 0;
                 
                 if(type === 'sell') {
                     const kg = parseFloat(document.getElementById('sell-kg').value) || 0;
@@ -372,25 +384,31 @@
                     const paid = parseFloat(document.getElementById('sell-paid').value) || 0;
                     const method = document.getElementById('sell-method').value;
                     
-                    amount = (kg * rate) - paid;
+                    const totalBill = kg * rate;
+                    netAmount = totalBill - paid; // positive means debt increased
+                    displayAmount = totalBill; // Show the full sell value in history
                     details = `${kg} কেজি (দর ${rate}) - জমা ৳${paid} (${method})`;
                     hideModal('sell-modal');
+                    // Reset
                     document.getElementById('sell-kg').value = '';
                     document.getElementById('sell-rate').value = '';
                     document.getElementById('sell-paid').value = '';
                 } else {
                     const payVal = parseFloat(document.getElementById('payment-amount').value) || 0;
                     const method = document.getElementById('payment-method').value;
-                    amount = -payVal;
+                    netAmount = -payVal; // negative means debt decreased
+                    displayAmount = payVal;
                     details = `বকেয়া জমা ৳${payVal} (${method})`;
                     hideModal('payment-modal');
                     document.getElementById('payment-amount').value = '';
                 }
 
-                cust.balance += amount;
+                cust.balance += netAmount;
                 cust.transactions.unshift({
-                    id: Date.now(), type, amount: (type === 'sell' ? (parseFloat(document.getElementById('sell-kg').value || 0) * parseFloat(document.getElementById('sell-rate').value || 0)) - amount : Math.abs(amount)), 
-                    actualImpact: amount, // ব্যালেন্স ঠিক করার জন্য
+                    id: Date.now(), 
+                    type, 
+                    amount: displayAmount, 
+                    netImpact: netAmount, // Saved for accurate deletion
                     details,
                     date: new Date().toLocaleString('bn-BD', {hour12: true, dateStyle: 'medium', timeStyle: 'short'})
                 });
@@ -406,105 +424,79 @@
                 <div class="bg-gray-50 p-3 rounded-xl border flex justify-between items-center">
                     <div><p class="font-bold text-sm text-gray-800">${t.details}</p><p class="text-[10px] text-gray-500">${t.date}</p></div>
                     <div class="flex items-center gap-3">
-                        <p class="font-bold ${t.actualImpact > 0 ? 'text-red-500' : 'text-green-600'}">${t.actualImpact > 0 ? '+' : ''} ৳${Math.abs(t.actualImpact)}</p>
-                        <button onclick="confirmDeleteTransaction(${t.id})" class="text-red-300 hover:text-red-500 transition-colors"><i class="fas fa-times-circle text-lg"></i></button>
+                        <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">${t.type === 'sell' ? '+' : '-'} ৳${t.amount}</p>
+                        <button onclick="requestDelete('transaction', ${t.id})" class="text-gray-300 hover:text-red-400 transition-colors">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                     </div>
                 </div>`).join('') || '<p class="text-center text-gray-400 py-5">লেনদেন নেই</p>';
         }
 
-        // --- UPDATED DELETE LOGIC WITH PASSWORD ---
+        // --- DELETION WITH PROTECTION ---
 
-        function confirmDeleteTransaction(tId) {
-            if(validateAction()) {
-                deleteTransaction(tId);
-            } else {
+        function requestDelete(type, id = null) {
+            deleteTarget = { type, id };
+            document.getElementById('delete-pin-input').value = '';
+            showModal('delete-confirm-modal');
+            document.getElementById('confirm-delete-btn').onclick = processDelete;
+        }
+
+        function processDelete() {
+            const inputPin = document.getElementById('delete-pin-input').value;
+            const actualPin = localStorage.getItem('appPin') || '1234';
+
+            if (inputPin !== actualPin) {
                 alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
+                return;
+            }
+
+            if (deleteTarget.type === 'customer') {
+                const tx = db.transaction("customers", "readwrite");
+                tx.objectStore("customers").delete(currentCustomerId).onsuccess = () => {
+                    hideModal('delete-confirm-modal');
+                    hideDetails(); 
+                    renderCustomers();
+                };
+            } else if (deleteTarget.type === 'transaction') {
+                const tx = db.transaction("customers", "readwrite");
+                const store = tx.objectStore("customers");
+                store.get(currentCustomerId).onsuccess = (e) => {
+                    const cust = e.target.result;
+                    const idx = cust.transactions.findIndex(t => t.id === deleteTarget.id);
+                    if (idx > -1) {
+                        const t = cust.transactions[idx];
+                        // Reverse the balance impact
+                        cust.balance -= t.netImpact; 
+                        cust.transactions.splice(idx, 1);
+                        store.put(cust).onsuccess = () => {
+                            hideModal('delete-confirm-modal');
+                            openDetails(currentCustomerId);
+                            renderCustomers();
+                        };
+                    }
+                };
             }
         }
 
-        function deleteTransaction(tId) {
-            const tx = db.transaction("customers", "readwrite");
-            const store = tx.objectStore("customers");
-            store.get(currentCustomerId).onsuccess = (e) => {
-                const cust = e.target.result;
-                const idx = cust.transactions.findIndex(t => t.id === tId);
-                if (idx > -1) {
-                    const t = cust.transactions[idx];
-                    // ব্যালেন্স থেকে লেনদেনের প্রভাব উল্টে দেওয়া (Revert balance)
-                    cust.balance -= t.actualImpact;
-                    // তালিকা থেকে রিমুভ করা
-                    cust.transactions.splice(idx, 1);
-                    
-                    store.put(cust).onsuccess = () => {
-                        alert("লেনদেন ডিলিট করা হয়েছে");
-                        openDetails(currentCustomerId); 
-                        renderCustomers();
-                    };
-                }
-            };
-        }
-
-        function confirmDeleteCustomer() {
-            if(validateAction()) {
-                deleteCurrentCustomer();
-            } else {
-                alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
-            }
-        }
-
-        function deleteCurrentCustomer() {
-            const tx = db.transaction("customers", "readwrite");
-            tx.objectStore("customers").delete(currentCustomerId).onsuccess = () => {
-                alert("কাস্টমার সফলভাবে ডিলিট হয়েছে");
-                hideDetails(); 
-                renderCustomers();
-            };
-        }
-
-        // --- SETTINGS & OTHERS ---
-
+        // WhatsApp Share
         function shareToWhatsApp() {
             const tx = db.transaction("customers", "readonly");
             tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
                 const cust = e.target.result;
                 const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
                 const amount = Math.abs(cust.balance);
-                const message = `*Nasim Store - মেমো*\n--------------------------\nসম্মানিত ${cust.name},\nআপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\nঅবস্থা: *${status}*\nপরিমাণ: *৳ ${amount}*\n\nধন্যবাদ আমাদের সাথে থাকার জন্য।`;
+                const message = `*Nasim Store - মেমো*\n` +
+                                `--------------------------\n` +
+                                `সম্মানিত ${cust.name},\n` +
+                                `আপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\n` +
+                                `অবস্থা: *${status}*\n` +
+                                `পরিমাণ: *৳ ${amount}*\n\n` +
+                                `ধন্যবাদ আমাদের সাথে থাকার জন্য।`;
                 window.open(`https://wa.me/88${cust.phone}?text=${encodeURIComponent(message)}`, '_blank');
             };
         }
 
-        function exportData() {
-            const tx = db.transaction("customers", "readonly");
-            tx.objectStore("customers").getAll().onsuccess = (e) => {
-                const blob = new Blob([JSON.stringify(e.target.result)], { type: "application/json" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = `Nasim_Store_Backup_${new Date().toLocaleDateString()}.json`;
-                a.click();
-            };
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (!confirm("সব পুরাতন হিসাব মুছে যাবে। নিশ্চিত?")) return;
-                    const tx = db.transaction("customers", "readwrite");
-                    const store = tx.objectStore("customers");
-                    store.clear().onsuccess = () => {
-                        data.forEach(item => { delete item.id; store.add(item); });
-                        alert("ডেটা রিস্টোর হয়েছে!");
-                        location.reload();
-                    };
-                } catch (err) { alert("ভুল ফাইল!"); }
-            };
-            reader.readAsText(file);
-        }
-
+        // Settings Functions
         function saveNewPin() {
             const pin = document.getElementById('new-pin').value;
             if(pin.length >= 4) {
@@ -528,10 +520,37 @@
             if(pic) document.getElementById('profile-pic-display').src = pic;
         }
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
-            });
+        function exportData() {
+            const tx = db.transaction("customers", "readonly");
+            tx.objectStore("customers").getAll().onsuccess = (e) => {
+                const data = JSON.stringify(e.target.result);
+                const blob = new Blob([data], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Nasim_Store_Backup_${new Date().toLocaleDateString()}.json`;
+                a.click();
+            };
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!confirm("সব পুরাতন হিসাব মুছে যাবে। আপনি কি নিশ্চিত?")) return;
+                    const tx = db.transaction("customers", "readwrite");
+                    const store = tx.objectStore("customers");
+                    store.clear().onsuccess = () => {
+                        data.forEach(item => { delete item.id; store.add(item); });
+                        alert("ডেটা রিস্টোর হয়েছে!");
+                        location.reload();
+                    };
+                } catch (err) { alert("ভুল ফাইল!"); }
+            };
+            reader.readAsText(file);
         }
     </script>
 </body>
