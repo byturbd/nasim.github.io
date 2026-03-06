@@ -31,6 +31,7 @@
     </div>
 
     <div id="app-content" class="hidden">
+        
         <header class="sticky-header bg-blue-700 text-white p-4 shadow-lg flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="relative w-12 h-12 rounded-full border-2 border-white overflow-hidden bg-gray-200">
@@ -60,6 +61,7 @@
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
+
             <main class="p-4 pb-24">
                 <h3 class="text-gray-500 font-bold mb-3 flex justify-between">
                     <span>কাস্টমার তালিকা</span>
@@ -78,17 +80,20 @@
                 </div>
                 <div class="flex gap-4 items-center">
                     <button onclick="shareToWhatsApp()" class="text-green-400 text-xl"><i class="fab fa-whatsapp"></i></button>
-                    <button onclick="deleteCurrentCustomer()" class="text-red-300 text-lg"><i class="fas fa-trash-alt"></i></button>
+                    <button onclick="confirmDeleteCustomer()" class="text-red-300 text-lg"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </div>
+            
             <div class="p-6 bg-blue-50 text-center border-b">
                 <p id="view-cust-status-label" class="text-sm text-gray-500 font-bold uppercase tracking-wider">বর্তমান অবস্থা</p>
                 <h1 id="view-cust-balance" class="text-4xl font-black mt-1">৳ 0</h1>
             </div>
+
             <div class="p-4 flex gap-3">
                 <button onclick="showModal('sell-modal')" class="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95"><i class="fas fa-shopping-cart mr-2"></i>মুরগি সেল</button>
                 <button onclick="showModal('payment-modal')" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95"><i class="fas fa-money-bill-wave mr-2"></i>বকেয়া জমা</button>
             </div>
+
             <div class="p-4 mb-20">
                 <h3 class="font-bold text-gray-600 mb-3 border-b pb-2">লেনদেনের ইতিহাস</h3>
                 <div id="transaction-list" class="space-y-2"></div>
@@ -166,6 +171,7 @@
                     <span id="sell-total" class="text-xl font-black text-blue-700">৳ ০</span>
                 </div>
                 <input type="number" id="sell-paid" placeholder="আজকের জমা (টাকা)" class="w-full p-3 border rounded-xl outline-none">
+                
                 <div class="w-full">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">টাকা দেওয়ার মাধ্যম</label>
                     <select id="sell-method" class="w-full p-3 border rounded-xl outline-none bg-white">
@@ -187,6 +193,7 @@
             <h2 class="text-xl font-bold mb-4 text-blue-700">বকেয়া জমা নিন</h2>
             <div class="space-y-3">
                 <input type="number" id="payment-amount" placeholder="জমার পরিমাণ (৳)" class="w-full p-4 border rounded-xl outline-none text-2xl text-center font-bold text-blue-600">
+                
                 <div class="w-full">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">জমার মাধ্যম</label>
                     <select id="payment-method" class="w-full p-3 border rounded-xl outline-none bg-white">
@@ -232,17 +239,6 @@
             } else { alert("ভুল পিন!"); }
         }
 
-        // সিকিউরিটি চেক ফাংশন
-        function securityCheck(callback) {
-            const pin = prompt("নিরাপত্তার জন্য আপনার ৪ সংখ্যার পিন কোড দিন:");
-            const savedPin = localStorage.getItem('appPin') || '1234';
-            if (pin === savedPin) {
-                callback();
-            } else if (pin !== null) {
-                alert("ভুল পিন! চেষ্টা ব্যর্থ হয়েছে।");
-            }
-        }
-
         function autoLogin() {
             if(localStorage.getItem('isLoggedIn') === 'true') showApp();
         }
@@ -261,6 +257,13 @@
 
         function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // Security Validation
+        function validateAction() {
+            const pass = prompt("নিরাপত্তার জন্য পিন কোড দিন:");
+            const savedPin = localStorage.getItem('appPin') || '1234';
+            return pass === savedPin;
+        }
 
         function saveCustomer() {
             const name = document.getElementById('cust-name').value.trim();
@@ -386,14 +389,12 @@
 
                 cust.balance += amount;
                 cust.transactions.unshift({
-                    id: Date.now(), type, netAmount: amount, amount: (type === 'sell' ? (parseFloat(document.getElementById('sell-kg').value || 0) * parseFloat(document.getElementById('sell-rate').value || 0) - (parseFloat(document.getElementById('sell-paid').value || 0))) : -parseFloat(document.getElementById('payment-amount').value || 0)),
-                    displayAmount: Math.abs(amount), details,
+                    id: Date.now(), type, amount: (type === 'sell' ? (parseFloat(document.getElementById('sell-kg').value || 0) * parseFloat(document.getElementById('sell-rate').value || 0)) - amount : Math.abs(amount)), 
+                    actualImpact: amount, // ব্যালেন্স ঠিক করার জন্য
+                    details,
                     date: new Date().toLocaleString('bn-BD', {hour12: true, dateStyle: 'medium', timeStyle: 'short'})
                 });
                 
-                // Fix for the amount display in the list
-                cust.transactions[0].displayAmount = (type === 'sell' ? (parseFloat(kg * rate) - paid) : payVal);
-
                 store.put(cust).onsuccess = () => {
                     openDetails(currentCustomerId); renderCustomers();
                 };
@@ -405,70 +406,80 @@
                 <div class="bg-gray-50 p-3 rounded-xl border flex justify-between items-center">
                     <div><p class="font-bold text-sm text-gray-800">${t.details}</p><p class="text-[10px] text-gray-500">${t.date}</p></div>
                     <div class="flex items-center gap-3">
-                        <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">${t.type === 'sell' ? '+' : '-'} ৳${t.displayAmount || t.amount}</p>
-                        <button onclick="deleteTransaction(${t.id})" class="text-red-300 hover:text-red-500 transition-colors"><i class="fas fa-times-circle"></i></button>
+                        <p class="font-bold ${t.actualImpact > 0 ? 'text-red-500' : 'text-green-600'}">${t.actualImpact > 0 ? '+' : ''} ৳${Math.abs(t.actualImpact)}</p>
+                        <button onclick="confirmDeleteTransaction(${t.id})" class="text-red-300 hover:text-red-500 transition-colors"><i class="fas fa-times-circle text-lg"></i></button>
                     </div>
                 </div>`).join('') || '<p class="text-center text-gray-400 py-5">লেনদেন নেই</p>';
         }
 
+        // --- UPDATED DELETE LOGIC WITH PASSWORD ---
+
+        function confirmDeleteTransaction(tId) {
+            if(validateAction()) {
+                deleteTransaction(tId);
+            } else {
+                alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
+            }
+        }
+
         function deleteTransaction(tId) {
-            securityCheck(() => {
-                const tx = db.transaction("customers", "readwrite");
-                const store = tx.objectStore("customers");
-                store.get(currentCustomerId).onsuccess = (e) => {
-                    const cust = e.target.result;
-                    const idx = cust.transactions.findIndex(t => t.id === tId);
-                    if (idx > -1) {
-                        const t = cust.transactions[idx];
-                        // লেনদেন ডিলিট করলে ব্যালেন্স থেকে সেই টাকা বিয়োগ হবে (উল্টো হবে)
-                        let adjustment = 0;
-                        if(t.type === 'sell') {
-                            adjustment = t.displayAmount; 
-                        } else {
-                            adjustment = -t.displayAmount;
-                        }
-                        cust.balance -= adjustment;
-                        cust.transactions.splice(idx, 1);
-                        
-                        store.put(cust).onsuccess = () => {
-                            alert("লেনদেন ডিলিট হয়েছে");
-                            openDetails(currentCustomerId);
-                            renderCustomers();
-                        };
-                    }
-                };
-            });
+            const tx = db.transaction("customers", "readwrite");
+            const store = tx.objectStore("customers");
+            store.get(currentCustomerId).onsuccess = (e) => {
+                const cust = e.target.result;
+                const idx = cust.transactions.findIndex(t => t.id === tId);
+                if (idx > -1) {
+                    const t = cust.transactions[idx];
+                    // ব্যালেন্স থেকে লেনদেনের প্রভাব উল্টে দেওয়া (Revert balance)
+                    cust.balance -= t.actualImpact;
+                    // তালিকা থেকে রিমুভ করা
+                    cust.transactions.splice(idx, 1);
+                    
+                    store.put(cust).onsuccess = () => {
+                        alert("লেনদেন ডিলিট করা হয়েছে");
+                        openDetails(currentCustomerId); 
+                        renderCustomers();
+                    };
+                }
+            };
+        }
+
+        function confirmDeleteCustomer() {
+            if(validateAction()) {
+                deleteCurrentCustomer();
+            } else {
+                alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
+            }
         }
 
         function deleteCurrentCustomer() {
-            securityCheck(() => {
-                const tx = db.transaction("customers", "readwrite");
-                tx.objectStore("customers").delete(currentCustomerId).onsuccess = () => {
-                    alert("কাস্টমার সফলভাবে ডিলিট হয়েছে");
-                    hideDetails(); 
-                    renderCustomers();
-                };
-            });
+            const tx = db.transaction("customers", "readwrite");
+            tx.objectStore("customers").delete(currentCustomerId).onsuccess = () => {
+                alert("কাস্টমার সফলভাবে ডিলিট হয়েছে");
+                hideDetails(); 
+                renderCustomers();
+            };
         }
 
-        function saveNewPin() {
-            const pin = document.getElementById('new-pin').value;
-            if(pin.length >= 4) {
-                localStorage.setItem('appPin', pin);
-                alert("পিন আপডেট হয়েছে!");
-                hideModal('settings-modal');
-                document.getElementById('new-pin').value = '';
-            } else alert("কমপক্ষে ৪ সংখ্যার পিন দিন");
+        // --- SETTINGS & OTHERS ---
+
+        function shareToWhatsApp() {
+            const tx = db.transaction("customers", "readonly");
+            tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
+                const cust = e.target.result;
+                const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
+                const amount = Math.abs(cust.balance);
+                const message = `*Nasim Store - মেমো*\n--------------------------\nসম্মানিত ${cust.name},\nআপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\nঅবস্থা: *${status}*\nপরিমাণ: *৳ ${amount}*\n\nধন্যবাদ আমাদের সাথে থাকার জন্য।`;
+                window.open(`https://wa.me/88${cust.phone}?text=${encodeURIComponent(message)}`, '_blank');
+            };
         }
 
         function exportData() {
             const tx = db.transaction("customers", "readonly");
             tx.objectStore("customers").getAll().onsuccess = (e) => {
-                const data = JSON.stringify(e.target.result);
-                const blob = new Blob([data], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
+                const blob = new Blob([JSON.stringify(e.target.result)], { type: "application/json" });
                 const a = document.createElement("a");
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `Nasim_Store_Backup_${new Date().toLocaleDateString()}.json`;
                 a.click();
             };
@@ -481,18 +492,26 @@
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    securityCheck(() => {
-                        const tx = db.transaction("customers", "readwrite");
-                        const store = tx.objectStore("customers");
-                        store.clear().onsuccess = () => {
-                            data.forEach(item => { delete item.id; store.add(item); });
-                            alert("ডেটা রিস্টোর হয়েছে!");
-                            location.reload();
-                        };
-                    });
+                    if (!confirm("সব পুরাতন হিসাব মুছে যাবে। নিশ্চিত?")) return;
+                    const tx = db.transaction("customers", "readwrite");
+                    const store = tx.objectStore("customers");
+                    store.clear().onsuccess = () => {
+                        data.forEach(item => { delete item.id; store.add(item); });
+                        alert("ডেটা রিস্টোর হয়েছে!");
+                        location.reload();
+                    };
                 } catch (err) { alert("ভুল ফাইল!"); }
             };
             reader.readAsText(file);
+        }
+
+        function saveNewPin() {
+            const pin = document.getElementById('new-pin').value;
+            if(pin.length >= 4) {
+                localStorage.setItem('appPin', pin);
+                alert("পিন আপডেট হয়েছে!");
+                hideModal('settings-modal');
+            } else alert("কমপক্ষে ৪ সংখ্যার পিন দিন");
         }
 
         function updateProfilePic(event) {
@@ -509,15 +528,10 @@
             if(pic) document.getElementById('profile-pic-display').src = pic;
         }
 
-        function shareToWhatsApp() {
-            const tx = db.transaction("customers", "readonly");
-            tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
-                const cust = e.target.result;
-                const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
-                const amount = Math.abs(cust.balance);
-                const message = `*Nasim Store - মেমো*\n--------------------------\nসম্মানিত ${cust.name},\nআপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\nঅবস্থা: *${status}*\nপরিমাণ: *৳ ${amount}*\n\nধন্যবাদ আমাদের সাথে থাকার জন্য।`;
-                window.open(`https://wa.me/88${cust.phone}?text=${encodeURIComponent(message)}`, '_blank');
-            };
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
+            });
         }
     </script>
 </body>
