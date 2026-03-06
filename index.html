@@ -16,7 +16,6 @@
         body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
         .sticky-header { position: sticky; top: 0; z-index: 50; }
         .hidden { display: none; }
-        /* আইকন স্টাইল */
         .icon { width: 24px; height: 24px; fill: currentColor; display: inline-block; vertical-align: middle; }
     </style>
 </head>
@@ -80,7 +79,10 @@
                     <h2 id="view-cust-name" class="font-bold text-xl truncate">কাস্টমার নাম</h2>
                     <p id="view-cust-phone" class="text-xs opacity-80">01700000000</p>
                 </div>
-                <div class="flex gap-4 items-center">
+                <div class="flex gap-2 items-center">
+                    <button onclick="shareToWhatsApp()" class="text-green-400 p-2">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.13 8.13 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.19-.3a8.13 8.13 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.24-8.24m-3.53 4.75c-.19 0-.52.07-.79.37-.27.3-.85.85-.85 2.06 0 1.21.88 2.39 1 2.56.12.17 1.74 2.65 4.21 3.72.58.26 1.04.41 1.4.52.59.19 1.13.16 1.56.1.47-.07 1.46-.6 1.67-1.18.2-.58.2-1.07.14-1.18-.06-.1-.23-.17-.48-.3s-1.46-.72-1.69-.81-.4-.13-.56.12-.63.81-.78.97-.29.18-.54.06c-.25-.13-1.06-.39-2.03-1.25-.75-.67-1.26-1.5-1.4-1.76-.15-.26-.02-.4.11-.53.12-.11.25-.3.38-.45s.17-.25.25-.42c.09-.17.04-.33-.02-.45s-.56-1.35-.77-1.85c-.2-.49-.41-.42-.56-.43h-.48z"/></svg>
+                    </button>
                     <button onclick="deleteCurrentCustomer()" class="text-red-300 p-2">
                         <svg class="icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                     </button>
@@ -345,6 +347,18 @@
         }
 
         function deleteCurrentCustomer() { askPinForDelete('customer', currentCustomerId); }
+
+        function shareToWhatsApp() {
+            const tx = db.transaction("customers", "readonly");
+            tx.objectStore("customers").get(currentCustomerId).onsuccess = (e) => {
+                const cust = e.target.result;
+                const status = cust.balance >= 0 ? "বকেয়া (পাওনা)" : "অগ্রিম জমা";
+                const amount = Math.abs(cust.balance);
+                const message = `*Nasim Store - মেমো*\n--------------------------\nসম্মানিত ${cust.name},\nআপনার বর্তমান হিসাব নিচে দেওয়া হলো:\n\nঅবস্থা: *${status}*\nপরিমাণ: *৳ ${amount}*\n\nধন্যবাদ আমাদের সাথে থাকার জন্য।`;
+                window.open(`https://wa.me/88${cust.phone}?text=${encodeURIComponent(message)}`, '_blank');
+            };
+        }
+
         function saveNewPin() { 
             const p = document.getElementById('new-pin').value;
             if(p.length >= 4) { localStorage.setItem('appPin', p); alert("পিন আপডেট হয়েছে"); hideModal('settings-modal'); }
