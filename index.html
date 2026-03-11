@@ -151,8 +151,9 @@
     <div id="add-customer-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-[120]">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl modal-animate">
             <h2 class="text-xl font-bold mb-4 text-blue-700">নতুন কাস্টমার</h2>
-            <input type="text" id="cust-name" placeholder="কাস্টমারের নাম" class="w-full p-4 border rounded-xl mb-3 outline-none">
-            <input type="tel" id="cust-phone" placeholder="মোবাইল নাম্বার" class="w-full p-4 border rounded-xl mb-5 outline-none">
+            <input type="text" id="cust-name" placeholder="কাস্টমারের নাম" class="w-full p-4 border rounded-xl mb-3 outline-none focus:border-blue-500">
+            <input type="tel" id="cust-phone" placeholder="মোবাইল নাম্বার" class="w-full p-4 border rounded-xl mb-3 outline-none focus:border-blue-500">
+            <input type="number" id="cust-prev-due" placeholder="পূর্বের বকেয়া (না থাকলে খালি রাখুন)" class="w-full p-4 border rounded-xl mb-5 outline-none focus:border-blue-500">
             <div class="flex gap-2">
                 <button onclick="hideModal('add-customer-modal')" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold">বাতিল</button>
                 <button onclick="saveCustomer()" class="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">সেভ করুন</button>
@@ -280,6 +281,8 @@
         function saveCustomer() {
             const name = document.getElementById('cust-name').value.trim();
             const phone = document.getElementById('cust-phone').value.trim();
+            const prevDue = parseFloat(document.getElementById('cust-prev-due').value) || 0;
+            
             if(!name || !phone) return alert("নাম ও ফোন দিন");
 
             const tx = db.transaction("customers", "readwrite");
@@ -289,14 +292,32 @@
                 if (isExist) return alert("এই নম্বর অলরেডি আছে!");
 
                 const customer = { 
-                    name, phone, balance: 0, transactions: [], 
+                    name, 
+                    phone, 
+                    balance: prevDue, 
+                    transactions: [], 
                     date: new Date().toLocaleDateString('bn-BD') 
                 };
+
+                // If previous due is entered, add it as first transaction
+                if(prevDue !== 0) {
+                    customer.transactions.push({
+                        id: Date.now(),
+                        type: 'sell',
+                        amount: Math.abs(prevDue),
+                        netImpact: prevDue,
+                        details: "পূর্বের বকেয়া (হিসাব শুরুর সময়)",
+                        date: new Date().toLocaleString('bn-BD', {hour12: true, dateStyle: 'medium', timeStyle: 'short'})
+                    });
+                }
+
                 store.add(customer).onsuccess = () => {
                     hideModal('add-customer-modal');
                     renderCustomers();
+                    // Reset fields
                     document.getElementById('cust-name').value = '';
                     document.getElementById('cust-phone').value = '';
+                    document.getElementById('cust-prev-due').value = '';
                 };
             };
         }
@@ -339,6 +360,7 @@
             const tx = db.transaction("customers", "readonly");
             tx.objectStore("customers").get(id).onsuccess = (e) => {
                 const cust = e.target.result;
+                if(!cust) return;
                 document.getElementById('view-cust-name').innerText = cust.name;
                 document.getElementById('view-cust-phone').innerText = cust.phone;
                 const balDisp = document.getElementById('view-cust-balance');
@@ -385,18 +407,17 @@
                     const method = document.getElementById('sell-method').value;
                     
                     const totalBill = kg * rate;
-                    netAmount = totalBill - paid; // positive means debt increased
-                    displayAmount = totalBill; // Show the full sell value in history
+                    netAmount = totalBill - paid; 
+                    displayAmount = totalBill; 
                     details = `${kg} কেজি (দর ${rate}) - জমা ৳${paid} (${method})`;
                     hideModal('sell-modal');
-                    // Reset
                     document.getElementById('sell-kg').value = '';
                     document.getElementById('sell-rate').value = '';
                     document.getElementById('sell-paid').value = '';
                 } else {
                     const payVal = parseFloat(document.getElementById('payment-amount').value) || 0;
                     const method = document.getElementById('payment-method').value;
-                    netAmount = -payVal; // negative means debt decreased
+                    netAmount = -payVal;
                     displayAmount = payVal;
                     details = `বকেয়া জমা ৳${payVal} (${method})`;
                     hideModal('payment-modal');
@@ -408,7 +429,7 @@
                     id: Date.now(), 
                     type, 
                     amount: displayAmount, 
-                    netImpact: netAmount, // Saved for accurate deletion
+                    netImpact: netAmount, 
                     details,
                     date: new Date().toLocaleString('bn-BD', {hour12: true, dateStyle: 'medium', timeStyle: 'short'})
                 });
@@ -422,7 +443,7 @@
         function renderTransactions(list) {
             document.getElementById('transaction-list').innerHTML = list.map(t => `
                 <div class="bg-gray-50 p-3 rounded-xl border flex justify-between items-center">
-                    <div><p class="font-bold text-sm text-gray-800">${t.details}</p><p class="text-[10px] text-gray-500">${t.date}</p></div>
+                    <div class="flex-1"><p class="font-bold text-sm text-gray-800">${t.details}</p><p class="text-[10px] text-gray-500">${t.date}</p></div>
                     <div class="flex items-center gap-3">
                         <p class="font-bold ${t.type === 'sell' ? 'text-red-500' : 'text-green-600'}">${t.type === 'sell' ? '+' : '-'} ৳${t.amount}</p>
                         <button onclick="requestDelete('transaction', ${t.id})" class="text-gray-300 hover:text-red-400 transition-colors">
@@ -432,8 +453,7 @@
                 </div>`).join('') || '<p class="text-center text-gray-400 py-5">লেনদেন নেই</p>';
         }
 
-        // --- DELETION WITH PROTECTION ---
-
+        // Deletion Protection
         function requestDelete(type, id = null) {
             deleteTarget = { type, id };
             document.getElementById('delete-pin-input').value = '';
@@ -446,26 +466,25 @@
             const actualPin = localStorage.getItem('appPin') || '1234';
 
             if (inputPin !== actualPin) {
-                alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
+                alert("ভুল পিন! ডিলিট করা সম্ভব নয়।");
                 return;
             }
 
+            const tx = db.transaction("customers", "readwrite");
+            const store = tx.objectStore("customers");
+
             if (deleteTarget.type === 'customer') {
-                const tx = db.transaction("customers", "readwrite");
-                tx.objectStore("customers").delete(currentCustomerId).onsuccess = () => {
+                store.delete(currentCustomerId).onsuccess = () => {
                     hideModal('delete-confirm-modal');
                     hideDetails(); 
                     renderCustomers();
                 };
             } else if (deleteTarget.type === 'transaction') {
-                const tx = db.transaction("customers", "readwrite");
-                const store = tx.objectStore("customers");
                 store.get(currentCustomerId).onsuccess = (e) => {
                     const cust = e.target.result;
                     const idx = cust.transactions.findIndex(t => t.id === deleteTarget.id);
                     if (idx > -1) {
                         const t = cust.transactions[idx];
-                        // Reverse the balance impact
                         cust.balance -= t.netImpact; 
                         cust.transactions.splice(idx, 1);
                         store.put(cust).onsuccess = () => {
@@ -541,14 +560,28 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     if (!confirm("সব পুরাতন হিসাব মুছে যাবে। আপনি কি নিশ্চিত?")) return;
+                    
                     const tx = db.transaction("customers", "readwrite");
                     const store = tx.objectStore("customers");
+                    
                     store.clear().onsuccess = () => {
-                        data.forEach(item => { delete item.id; store.add(item); });
-                        alert("ডেটা রিস্টোর হয়েছে!");
-                        location.reload();
+                        let count = 0;
+                        data.forEach(item => {
+                            // Removing old ID to let IndexedDB auto-increment properly if needed
+                            // but usually for backup we want to keep data structure.
+                            const newItem = {...item};
+                            delete newItem.id; 
+                            
+                            store.add(newItem).onsuccess = () => {
+                                count++;
+                                if(count === data.length) {
+                                    alert("ডেটা রিস্টোর সফল হয়েছে!");
+                                    location.reload();
+                                }
+                            };
+                        });
                     };
-                } catch (err) { alert("ভুল ফাইল!"); }
+                } catch (err) { alert("ভুল ফাইল! সঠিক ব্যাকআপ ফাইল সিলেক্ট করুন।"); }
             };
             reader.readAsText(file);
         }
